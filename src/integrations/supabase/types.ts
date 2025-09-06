@@ -14,7 +14,175 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      certificates: {
+        Row: {
+          certificate_number: string
+          id: string
+          issue_date: string
+          pdf_url: string | null
+          property_title: string
+          purchase_id: string
+          tokens_owned: number
+          user_id: string
+        }
+        Insert: {
+          certificate_number: string
+          id?: string
+          issue_date?: string
+          pdf_url?: string | null
+          property_title: string
+          purchase_id: string
+          tokens_owned: number
+          user_id: string
+        }
+        Update: {
+          certificate_number?: string
+          id?: string
+          issue_date?: string
+          pdf_url?: string | null
+          property_title?: string
+          purchase_id?: string
+          tokens_owned?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "token_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          created_at: string
+          description: string | null
+          estimated_roi: number
+          gallery_urls: string[] | null
+          id: string
+          image_url: string | null
+          investment_terms: string | null
+          location: string
+          property_type: string
+          status: string
+          title: string
+          token_price: number
+          tokens_sold: number
+          total_tokens: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          estimated_roi: number
+          gallery_urls?: string[] | null
+          id?: string
+          image_url?: string | null
+          investment_terms?: string | null
+          location: string
+          property_type?: string
+          status?: string
+          title: string
+          token_price: number
+          tokens_sold?: number
+          total_tokens: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          estimated_roi?: number
+          gallery_urls?: string[] | null
+          id?: string
+          image_url?: string | null
+          investment_terms?: string | null
+          location?: string
+          property_type?: string
+          status?: string
+          title?: string
+          token_price?: number
+          tokens_sold?: number
+          total_tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      token_purchases: {
+        Row: {
+          certificate_issued: boolean | null
+          certificate_url: string | null
+          id: string
+          property_id: string
+          purchase_date: string
+          tokens_purchased: number
+          total_cost: number
+          user_id: string
+        }
+        Insert: {
+          certificate_issued?: boolean | null
+          certificate_url?: string | null
+          id?: string
+          property_id: string
+          purchase_date?: string
+          tokens_purchased: number
+          total_cost: number
+          user_id: string
+        }
+        Update: {
+          certificate_issued?: boolean | null
+          certificate_url?: string | null
+          id?: string
+          property_id?: string
+          purchase_date?: string
+          tokens_purchased?: number
+          total_cost?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_purchases_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
