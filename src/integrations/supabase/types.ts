@@ -88,6 +88,44 @@ export type Database = {
         }
         Relationships: []
       }
+      profit_distributions: {
+        Row: {
+          created_by: string
+          distribution_date: string
+          id: string
+          notes: string | null
+          per_token_amount: number
+          property_id: string
+          total_amount: number
+        }
+        Insert: {
+          created_by: string
+          distribution_date?: string
+          id?: string
+          notes?: string | null
+          per_token_amount: number
+          property_id: string
+          total_amount: number
+        }
+        Update: {
+          created_by?: string
+          distribution_date?: string
+          id?: string
+          notes?: string | null
+          per_token_amount?: number
+          property_id?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profit_distributions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           created_at: string
@@ -97,8 +135,10 @@ export type Database = {
           id: string
           image_url: string | null
           investment_terms: string | null
+          is_verified: boolean
           location: string
           property_type: string
+          seller_user_id: string | null
           status: string
           title: string
           token_price: number
@@ -114,8 +154,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           investment_terms?: string | null
+          is_verified?: boolean
           location: string
           property_type?: string
+          seller_user_id?: string | null
           status?: string
           title: string
           token_price: number
@@ -131,8 +173,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           investment_terms?: string | null
+          is_verified?: boolean
           location?: string
           property_type?: string
+          seller_user_id?: string | null
           status?: string
           title?: string
           token_price?: number
@@ -183,15 +227,144 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          metadata: Json | null
+          property_id: string | null
+          purchase_id: string | null
+          status: string
+          type: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          property_id?: string | null
+          purchase_id?: string | null
+          status?: string
+          type: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          property_id?: string | null
+          purchase_id?: string | null
+          status?: string
+          type?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "token_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      assign_role: {
+        Args: {
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Returns: undefined
+      }
+      deposit_to_wallet: {
+        Args: { p_amount: number }
+        Returns: number
+      }
+      distribute_property_profit: {
+        Args: {
+          p_notes?: string
+          p_property_id: string
+          p_total_amount: number
+        }
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      purchase_tokens: {
+        Args: { p_property_id: string; p_tokens: number }
+        Returns: Json
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "seller_verified" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -318,6 +491,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "seller_verified", "user"],
+    },
   },
 } as const

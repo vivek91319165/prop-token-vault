@@ -1,6 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { User, LogOut } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User, LogOut, FileText, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -8,22 +16,45 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export default function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+    };
+    getSession();
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase.rpc('has_role', {
+            _user_id: user.id,
+            _role: 'admin'
+          });
+          if (!error) {
+            setIsAdmin(data);
+          }
+        } catch (error) {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdminRole();
+  }, [user]);
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -68,27 +99,50 @@ export default function Navbar() {
 
           <div className="flex items-center space-x-4">
             {user ? (
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2 text-sm text-foreground/80">
-                  <User className="w-4 h-4" />
-                  <span>{user.email}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="flex items-center space-x-1"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Sign Out</span>
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {user.email?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{user.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <User className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/certificates")}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Certificates
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/admin")}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <div className="flex items-center space-x-3">
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/auth">Sign In</Link>
                 </Button>
-                <Button variant="hero" size="sm" asChild>
+                <Button size="sm" asChild>
                   <Link to="/auth">Get Started</Link>
                 </Button>
               </div>

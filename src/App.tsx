@@ -10,6 +10,7 @@ import Marketplace from "./pages/Marketplace";
 import Dashboard from "./pages/Dashboard";
 import PropertyDetails from "./pages/PropertyDetails";
 import Certificates from "./pages/Certificates";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/property/:id" element={<PropertyDetails />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/certificates" element={<Certificates />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
