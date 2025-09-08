@@ -12,9 +12,7 @@ interface Certificate {
   tokens_owned: number;
   property_title: string;
   pdf_url: string | null;
-  issued_at: string;
-  created_at: string;
-  updated_at: string;
+  issue_date: string;
 }
 
 export const useCertificates = () => {
@@ -54,7 +52,7 @@ export const useCertificates = () => {
         .from('certificates')
         .select('*')
         .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
+        .order('issue_date', { ascending: false });
 
       if (error) throw error;
       setCertificates(data || []);
@@ -130,7 +128,7 @@ export const useCertificates = () => {
       pdf.text(`Property: ${certificate.property_title}`, 20, 100);
       pdf.text(`Token Holder: ${profile.first_name} ${profile.last_name}`, 20, 120);
       pdf.text(`Tokens Owned: ${certificate.tokens_owned}`, 20, 140);
-      pdf.text(`Issue Date: ${new Date(certificate.issued_at).toLocaleDateString()}`, 20, 160);
+      pdf.text(`Issue Date: ${new Date(certificate.issue_date).toLocaleDateString()}`, 20, 160);
       
       pdf.setFontSize(10);
       pdf.text('This certificate represents digital ownership of property tokens', 20, 200);

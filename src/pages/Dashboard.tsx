@@ -273,7 +273,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium">{purchase.properties?.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {purchase.tokens_purchased} tokens • {new Date(purchase.created_at).toLocaleDateString()}
+                          {purchase.tokens_purchased} tokens • {new Date(purchase.purchase_date).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -312,7 +312,7 @@ export default function Dashboard() {
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Issue Date:</span>
                       <span className="font-medium">
-                        {new Date(certificate.created_at).toLocaleDateString()}
+                        {new Date(certificate.issue_date).toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
