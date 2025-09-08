@@ -96,6 +96,110 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Real-time subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    const purchasesChannel = supabase
+      .channel('purchases-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'token_purchases',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchUserData(user);
+        }
+      )
+      .subscribe();
+
+    const certificatesChannel = supabase
+      .channel('certificates-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'certificates',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          fetchUserData(user);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(purchasesChannel);
+      supabase.removeChannel(certificatesChannel);
+    };
+  }, [user]);
+
+  // Real-time wallet tracking
+  useEffect(() => {
+    if (!user) return;
+
+    const walletChannel = supabase
+      .channel('wallet-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'wallets',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          toast({
+            title: "Wallet Updated",
+            description: "Your wallet balance has been updated",
+          });
+          fetchUserData(user);
+        }
+      )
+      .subscribe();
+
+    const transactionsChannel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'wallet_transactions'
+        },
+        (payload) => {
+          // Check if this transaction belongs to the current user's wallet
+          supabase
+            .from('wallets')
+            .select('user_id')
+            .eq('id', payload.new.wallet_id)
+            .single()
+            .then(({ data }) => {
+              if (data?.user_id === user.id) {
+                const transactionType = payload.new.type;
+                const amount = payload.new.amount;
+                
+                toast({
+                  title: `${transactionType === 'deposit' ? 'Deposit' : transactionType === 'purchase' ? 'Purchase' : 'Profit'} Completed`,
+                  description: `${transactionType === 'purchase' ? '-' : '+'}$${amount}`,
+                });
+                fetchUserData(user);
+              }
+            });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(walletChannel);
+      supabase.removeChannel(transactionsChannel);
+    };
+  }, [user, toast]);
+
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8">
