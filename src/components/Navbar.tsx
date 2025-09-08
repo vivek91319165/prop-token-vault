@@ -17,6 +17,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 export default function Navbar() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -34,26 +35,39 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Check if user has admin or seller role
   useEffect(() => {
-    const checkAdminRole = async () => {
+    const checkRoles = async () => {
       if (user) {
         try {
-          const { data, error } = await supabase.rpc('has_role', {
+          // Check admin role
+          const { data: adminData, error: adminError } = await supabase.rpc('has_role', {
             _user_id: user.id,
             _role: 'admin'
           });
-          if (!error) {
-            setIsAdmin(data);
+          if (!adminError) {
+            setIsAdmin(adminData);
+          }
+
+          // Check seller role
+          const { data: sellerData, error: sellerError } = await supabase.rpc('has_role', {
+            _user_id: user.id,
+            _role: 'seller_verified'
+          });
+          if (!sellerError) {
+            setIsSeller(sellerData);
           }
         } catch (error) {
           setIsAdmin(false);
+          setIsSeller(false);
         }
       } else {
         setIsAdmin(false);
+        setIsSeller(false);
       }
     };
 
-    checkAdminRole();
+    checkRoles();
   }, [user]);
 
   const handleSignOut = async () => {
@@ -128,6 +142,12 @@ export default function Navbar() {
                     <DropdownMenuItem onClick={() => navigate("/admin")}>
                       <Shield className="mr-2 h-4 w-4" />
                       Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  {isSeller && (
+                    <DropdownMenuItem onClick={() => navigate("/seller-dashboard")}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Seller Dashboard
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />

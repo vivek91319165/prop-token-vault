@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Marketplace from "./pages/Marketplace";
 import Dashboard from "./pages/Dashboard";
+import SellerDashboard from "./pages/SellerDashboard";
 import PropertyDetails from "./pages/PropertyDetails";
 import Certificates from "./pages/Certificates";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -27,7 +28,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/property/:id" element={<PropertyDetails />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/seller-dashboard" element={<SellerDashboard />} />
           <Route path="/certificates" element={<Certificates />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
