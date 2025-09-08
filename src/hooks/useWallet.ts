@@ -94,49 +94,78 @@ export const useWallet = () => {
 
   // Real-time subscriptions
   useEffect(() => {
-    if (!user || !wallet) return;
+    if (!user) return;
 
     const walletChannel = supabase
-      .channel('wallet-changes')
+      .channel('wallet-realtime')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'wallets',
-          filter: `user_id=eq.${user.id}`,
+          filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            setWallet(payload.new as Wallet);
-          }
+          console.log('Wallet updated in real-time:', payload);
+          setWallet(payload.new as Wallet);
+          toast({
+            title: "Wallet Updated",
+            description: "Your wallet balance has been updated",
+          });
         }
       )
       .subscribe();
 
-    const transactionsChannel = supabase
-      .channel('transaction-changes')
+    const transactionChannel = supabase
+      .channel('transactions-realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'wallet_transactions',
-          filter: `wallet_id=eq.${wallet.id}`,
+          table: 'wallet_transactions'
         },
-        (payload) => {
-          setTransactions(prev => [payload.new as Transaction, ...prev]);
+        async (payload) => {
+          console.log('New transaction in real-time:', payload);
+          // Check if this transaction belongs to current user's wallet
+          if (wallet && payload.new.wallet_id === wallet.id) {
+            // Add new transaction to the list
+            setTransactions(prev => [payload.new as Transaction, ...prev]);
+            
+            // Show transaction notification
+            const transaction = payload.new as Transaction;
+            const isDebit = transaction.type === 'purchase';
+            toast({
+              title: `${transaction.type === 'deposit' ? 'Deposit' : transaction.type === 'purchase' ? 'Purchase' : 'Profit'} ${isDebit ? 'Completed' : 'Received'}`,
+              description: `${isDebit ? '-' : '+'}$${transaction.amount} ${transaction.metadata?.tokens ? `• ${transaction.metadata.tokens} tokens` : ''}`,
+            });
+          } else if (!wallet) {
+            // If wallet not loaded, check if this transaction belongs to user
+            const { data: walletData } = await supabase
+              .from('wallets')
+              .select('user_id')
+              .eq('id', payload.new.wallet_id)
+              .single();
+            
+            if (walletData?.user_id === user.id) {
+              fetchWalletData(user);
+            }
+          }
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(walletChannel);
-      supabase.removeChannel(transactionsChannel);
+      supabase.removeChannel(transactionChannel);
     };
   }, [user, wallet]);
 
   const depositToWallet = async (amount: number) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    setLoading(true);
     try {
       const { data, error } = await supabase.rpc('deposit_to_wallet', {
         p_amount: amount
@@ -144,24 +173,29 @@ export const useWallet = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: `$${amount} deposited to your wallet`,
-      });
+      // Optimistically update wallet balance
+      if (wallet) {
+        setWallet(prev => prev ? { ...prev, balance: data } : null);
+      }
 
       return data;
-    } catch (error) {
-      console.error('Error depositing to wallet:', error);
+    } catch (error: any) {
+      console.error('Deposit error:', error);
       toast({
-        title: "Error",
-        description: "Failed to deposit to wallet",
+        title: "Deposit Failed",
+        description: error.message || "Failed to deposit funds",
         variant: "destructive",
       });
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const purchaseTokens = async (propertyId: string, tokens: number) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    setLoading(true);
     try {
       const { data, error } = await supabase.rpc('purchase_tokens', {
         p_property_id: propertyId,
@@ -170,20 +204,19 @@ export const useWallet = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: `Successfully purchased ${tokens} tokens`,
-      });
-
+      // The real-time subscription will handle the UI updates
+      
       return data;
-    } catch (error) {
-      console.error('Error purchasing tokens:', error);
+    } catch (error: any) {
+      console.error('Purchase error:', error);
       toast({
-        title: "Error",
+        title: "Purchase Failed",
         description: error.message || "Failed to purchase tokens",
         variant: "destructive",
       });
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
