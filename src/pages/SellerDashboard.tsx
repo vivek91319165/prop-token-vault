@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building, Plus, Edit, Eye, DollarSign, TrendingUp, MapPin, Calendar } from "lucide-react";
+import { Building, Plus, Edit, Eye, DollarSign, TrendingUp, MapPin, Calendar, Upload, X } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 interface Property {
@@ -59,6 +59,7 @@ export default function SellerDashboard() {
     estimated_roi: 0,
     investment_terms: ""
   });
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -185,6 +186,61 @@ export default function SellerDashboard() {
         description: "Failed to save property. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast({
+        title: "Error", 
+        description: "Image size should be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('certificates') // Using existing public bucket
+        .upload(`property-images/${fileName}`, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('certificates')
+        .getPublicUrl(`property-images/${fileName}`);
+
+      setFormData({ ...formData, image_url: publicUrl });
+      
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully!",
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -386,13 +442,50 @@ export default function SellerDashboard() {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="image_url">Image URL</Label>
-                    <Input
-                      id="image_url"
-                      value={formData.image_url}
-                      onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                      placeholder="https://example.com/image.jpg"
-                    />
+                    <Label>Property Image</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={uploading}
+                          className="hidden"
+                          id="image-upload"
+                        />
+                        <Label 
+                          htmlFor="image-upload" 
+                          className="flex items-center gap-2 px-4 py-2 border border-input rounded-md cursor-pointer hover:bg-accent"
+                        >
+                          <Upload className="h-4 w-4" />
+                          {uploading ? 'Uploading...' : 'Upload Image'}
+                        </Label>
+                        {formData.image_url && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFormData({...formData, image_url: ""})}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                      {formData.image_url && (
+                        <div className="w-full h-32 border rounded-lg overflow-hidden">
+                          <img
+                            src={formData.image_url}
+                            alt="Property preview"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <Input
+                        placeholder="Or paste image URL"
+                        value={formData.image_url}
+                        onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                      />
+                    </div>
                   </div>
                 </div>
 

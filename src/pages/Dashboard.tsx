@@ -72,7 +72,7 @@ export default function Dashboard() {
           )
         `)
         .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
+        .order('purchase_date', { ascending: false });
 
       if (error) throw error;
       setPurchases(purchasesData || []);
