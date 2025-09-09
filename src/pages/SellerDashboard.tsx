@@ -217,14 +217,14 @@ export default function SellerDashboard() {
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('certificates') // Using existing public bucket
-        .upload(`property-images/${fileName}`, file);
+        .from('property-images')
+        .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('certificates')
-        .getPublicUrl(`property-images/${fileName}`);
+        .from('property-images')
+        .getPublicUrl(fileName);
 
       setFormData({ ...formData, image_url: publicUrl });
       
