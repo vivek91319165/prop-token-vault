@@ -148,26 +148,38 @@ export const WalletCard = () => {
                 <div className="flex items-center space-x-3">
                   {getTransactionIcon(transaction.type, transaction.status)}
                   <div>
-                    <p className="font-medium capitalize">
-                      {transaction.type === 'profit' ? 'Profit Distribution' : transaction.type}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(transaction.created_at).toLocaleString()}
-                    </p>
-                    {transaction.status === 'pending' && (
-                      <p className="text-xs text-yellow-600">Processing...</p>
-                    )}
+                     <p className="font-medium capitalize">
+                       {transaction.type === 'profit' ? 'Profit Distribution' : 
+                        transaction.type === 'purchase' ? 'Token Purchase' : 
+                        transaction.type}
+                     </p>
+                     <p className="text-sm text-muted-foreground">
+                       {new Date(transaction.created_at).toLocaleString()}
+                     </p>
+                     {transaction.metadata?.property_title && (
+                       <p className="text-xs text-muted-foreground truncate max-w-48">
+                         Property: {transaction.metadata.property_title}
+                       </p>
+                     )}
+                     {transaction.status === 'pending' && (
+                       <p className="text-xs text-yellow-600">Processing...</p>
+                     )}
                   </div>
                 </div>
                 <div className="text-right">
                   <p className={`font-medium ${getTransactionColor(transaction.type)}`}>
                     {transaction.type === 'purchase' ? '-' : '+'}${transaction.amount.toFixed(2)}
                   </p>
-                  {transaction.metadata && transaction.metadata.tokens && (
-                    <p className="text-xs text-muted-foreground">
-                      {transaction.metadata.tokens} tokens
-                    </p>
-                  )}
+                   {transaction.metadata && transaction.metadata.tokens && (
+                     <p className="text-xs text-muted-foreground">
+                       {transaction.metadata.tokens} tokens
+                     </p>
+                   )}
+                   {transaction.type === 'purchase' && transaction.metadata?.per_token && (
+                     <p className="text-xs text-muted-foreground">
+                       ${transaction.metadata.per_token} per token
+                     </p>
+                   )}
                 </div>
               </div>
             ))}
