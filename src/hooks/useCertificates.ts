@@ -97,9 +97,16 @@ export const useCertificates = () => {
           const newCert = payload.new as Certificate;
           setCertificates(prev => [newCert, ...prev]);
           
+          toast({
+            title: "New Certificate Created",
+            description: `Certificate for ${newCert.property_title} has been issued`,
+          });
+          
           // Auto-generate PDF if not exists
           if (!newCert.pdf_url && profile) {
-            await generateCertificatePDF(newCert);
+            setTimeout(() => {
+              generateCertificatePDF(newCert);
+            }, 1000); // Small delay to ensure UI updates
           }
         }
       )
@@ -180,8 +187,8 @@ export const useCertificates = () => {
       );
 
       toast({
-        title: "Certificate Generated",
-        description: "Your digital certificate has been created and is ready for download",
+        title: "Certificate Ready",
+        description: `Digital certificate for ${certificate.property_title} is now available for download`,
       });
 
     } catch (error) {

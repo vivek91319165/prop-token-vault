@@ -150,6 +150,10 @@ export default function Navbar() {
                       Seller Dashboard
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem onClick={() => navigate("/seller-dashboard")}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Become a Seller
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
