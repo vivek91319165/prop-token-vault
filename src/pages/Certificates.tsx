@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Award, 
   Download, 
@@ -11,36 +12,24 @@ import {
   Building,
   Shield,
   Hash,
-  Eye
+  Eye,
+  User
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@supabase/supabase-js";
+import { useCertificates } from "@/hooks/useCertificates";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-interface Certificate {
-  id: string;
-  certificate_number: string;
-  property_title: string;
-  tokens_owned: number;
-  issue_date: string;
-  pdf_url: string | null;
-  token_purchases: {
-    total_cost: number;
-    purchase_date: string;
-    properties: {
-      title: string;
-      location: string;
-      token_price: number;
-      estimated_roi: number;
-      image_url: string;
-    };
-  };
+interface Profile {
+  first_name: string;
+  last_name: string;
+  email: string;
 }
 
 export default function Certificates() {
-  const [user, setUser] = useState<User | null>(null);
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const { certificates, loading, downloadCertificate } = useCertificates();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -48,7 +37,7 @@ export default function Certificates() {
       (event, session) => {
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchCertificates(session.user);
+          fetchProfile(session.user);
         }
       }
     );
@@ -56,79 +45,75 @@ export default function Certificates() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchCertificates(session.user);
-      } else {
-        setLoading(false);
+        fetchProfile(session.user);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchCertificates = async (currentUser: User) => {
+  const fetchProfile = async (currentUser: SupabaseUser) => {
     try {
-      // For demo purposes, we'll create certificates from purchases
-      // In a real app, these would be separate certificate records
-      const { data: purchases, error } = await supabase
-        .from("token_purchases")
-        .select(`
-          *,
-          properties (
-            title,
-            location,
-            token_price,
-            estimated_roi,
-            image_url
-          )
-        `)
-        .eq("user_id", currentUser.id)
-        .eq("certificate_issued", true)
-        .order("purchase_date", { ascending: false });
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('user_id', currentUser.id)
+        .single();
 
       if (error) throw error;
-
-      // Transform purchases into certificate format
-      const transformedCertificates = (purchases || []).map(purchase => ({
-        id: purchase.id,
-        certificate_number: `CERT-${purchase.id.slice(0, 8).toUpperCase()}`,
-        property_title: purchase.properties.title,
-        tokens_owned: purchase.tokens_purchased,
-        issue_date: purchase.purchase_date,
-        pdf_url: null, // Would be generated in real implementation
-        token_purchases: {
-          total_cost: purchase.total_cost,
-          purchase_date: purchase.purchase_date,
-          properties: purchase.properties
-        }
-      }));
-
-      setCertificates(transformedCertificates);
-    } catch (error: any) {
-      toast({
-        title: "Error loading certificates",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      setProfile(profileData);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     }
   };
 
-  const handleDownload = (certificateId: string) => {
-    // In a real implementation, this would download the actual PDF
-    toast({
-      title: "Certificate downloaded",
-      description: "Your certificate has been downloaded successfully.",
-    });
+  const handleDownload = (certificate: any) => {
+    downloadCertificate(certificate);
   };
 
-  const handlePreview = (certificateId: string) => {
-    // In a real implementation, this would open a certificate preview
-    toast({
-      title: "Certificate preview",
-      description: "Certificate preview functionality coming soon.",
-    });
-  };
+  const CertificatePreview = ({ certificate, userProfile }: { certificate: any, userProfile: Profile | null }) => (
+    <div className="bg-white text-black p-8 max-w-2xl mx-auto border shadow-lg">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-blue-900 mb-2">DIGITAL PROPERTY CERTIFICATE</h1>
+        <p className="text-lg text-gray-600">Certificate of Ownership</p>
+      </div>
+      
+      <div className="space-y-4 mb-8">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-500">Certificate Number:</label>
+            <p className="text-lg font-mono">{certificate.certificate_number}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-500">Issue Date:</label>
+            <p className="text-lg">{new Date(certificate.issue_date).toLocaleDateString()}</p>
+          </div>
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium text-gray-500">Property:</label>
+          <p className="text-xl font-semibold text-blue-900">{certificate.property_title}</p>
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium text-gray-500">Token Holder:</label>
+          <p className="text-xl font-semibold">
+            {userProfile ? `${userProfile.first_name} ${userProfile.last_name}` : 'Loading...'}
+          </p>
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium text-gray-500">Tokens Owned:</label>
+          <p className="text-xl font-semibold text-green-600">{certificate.tokens_owned}</p>
+        </div>
+      </div>
+      
+      <div className="border-t pt-6 text-sm text-gray-600">
+        <p className="mb-2">This certificate represents digital ownership of property tokens and is legally binding according to our terms of service.</p>
+        <p>Certificate authenticated and verified through blockchain technology.</p>
+      </div>
+    </div>
+  );
 
   if (!user && !loading) {
     return <Navigate to="/auth" replace />;
@@ -205,7 +190,7 @@ export default function Certificates() {
               <p className="text-muted-foreground mb-8 max-w-md mx-auto">
                 Purchase property tokens to receive verified digital certificates of ownership.
               </p>
-              <Button variant="hero" asChild>
+              <Button variant="default" asChild>
                 <a href="/marketplace">Browse Properties</a>
               </Button>
             </CardContent>
@@ -214,32 +199,20 @@ export default function Certificates() {
           <div className="space-y-6">
             {certificates.map((certificate) => (
               <Card key={certificate.id} className="group hover:shadow-lg transition-all duration-300">
-                <CardContent className="p-0">
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6">
-                    {/* Property Image */}
-                    <div className="relative overflow-hidden rounded-lg">
-                      <img
-                        src={certificate.token_purchases.properties.image_url || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop"}
-                        alt={certificate.property_title}
-                        className="w-full h-32 lg:h-24 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <Badge className="absolute top-2 left-2 bg-success text-success-foreground">
-                        Verified
-                      </Badge>
-                    </div>
-
-                    {/* Certificate Details */}
-                    <div className="lg:col-span-2 space-y-3">
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Certificate Info */}
+                    <div className="lg:col-span-3 space-y-4">
                       <div>
-                        <h3 className="font-semibold text-lg text-foreground mb-1">
+                        <h3 className="font-semibold text-xl text-foreground mb-2">
                           {certificate.property_title}
                         </h3>
-                        <p className="text-muted-foreground text-sm">
-                          {certificate.token_purchases.properties.location}
-                        </p>
+                        <Badge className="bg-success text-success-foreground">
+                          Verified Certificate
+                        </Badge>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div className="flex items-center gap-2">
                           <Hash className="w-4 h-4 text-muted-foreground" />
                           <div>
@@ -262,28 +235,19 @@ export default function Certificates() {
                           <Building className="w-4 h-4 text-muted-foreground" />
                           <div>
                             <span className="text-muted-foreground block">Tokens Owned</span>
-                            <span className="font-medium">{certificate.tokens_owned}</span>
+                            <span className="font-medium text-green-600">{certificate.tokens_owned}</span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-muted-foreground" />
+                          <User className="w-4 h-4 text-muted-foreground" />
                           <div>
-                            <span className="text-muted-foreground block">Investment</span>
+                            <span className="text-muted-foreground block">Owner</span>
                             <span className="font-medium">
-                              ${certificate.token_purchases.total_cost.toLocaleString()}
+                              {profile ? `${profile.first_name} ${profile.last_name}` : 'Loading...'}
                             </span>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-2">
-                        <Badge variant="default" className="bg-primary/10 text-primary">
-                          {certificate.token_purchases.properties.estimated_roi}% ROI
-                        </Badge>
-                        <Badge variant="outline">
-                          ${certificate.token_purchases.properties.token_price} per token
-                        </Badge>
                       </div>
                     </div>
 
@@ -292,22 +256,32 @@ export default function Certificates() {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleDownload(certificate.id)}
+                        onClick={() => handleDownload(certificate)}
                         className="flex items-center gap-2"
+                        disabled={!certificate.pdf_url}
                       >
                         <Download className="w-4 h-4" />
-                        Download PDF
+                        {certificate.pdf_url ? 'Download PDF' : 'Generating...'}
                       </Button>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePreview(certificate.id)}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Preview
-                      </Button>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Preview
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Certificate Preview</DialogTitle>
+                          </DialogHeader>
+                          <CertificatePreview certificate={certificate} userProfile={profile} />
+                        </DialogContent>
+                      </Dialog>
 
                       <div className="text-xs text-muted-foreground text-center lg:text-right">
                         Certificate valid<br />
